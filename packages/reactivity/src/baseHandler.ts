@@ -1,3 +1,6 @@
+import { activeEffect } from "./effect"
+import { track, trigger } from "./reactiveEffect"
+
 export enum ReactiveFlags {
     IS_REACTIVE = '__v_isReactive',
 }
@@ -7,7 +10,8 @@ export const mutableHandlers: ProxyHandler<any> = {
         if (key === ReactiveFlags.IS_REACTIVE) {
             return true
         }
-        // todo: 依赖收集
+
+        track(target, key) // 收集这个对象上的属性，和effect关联在一起
 
         // 当取值的时候, 应该让响应式属性 和 effect 映射起来
         return Reflect.get(target, key, receiver)
@@ -15,7 +19,15 @@ export const mutableHandlers: ProxyHandler<any> = {
     set(target, key, value, receiver) {
         // 找到属性 让那个页面更新
 
-        // todo: 触发更新
-        return Reflect.set(target, key, value, receiver)
+        let oldValue = target[key];
+        let result = Reflect.set(target, key, value, receiver)
+
+        // 比较新旧值
+        if (oldValue !== value) {
+            // 需要触发更新
+            trigger(target, key, value, oldValue)
+        }
+
+        return result
     }
 }
